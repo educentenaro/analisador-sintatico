@@ -1,4 +1,4 @@
-import { grammar, TABLE, COLUMNS, prodToString } from "@/lib/grammar"
+import { prodToString, type Grammar, type ParseTable } from "@/lib/grammar"
 import { cn } from "@/lib/utils"
 
 type Highlight = { nonTerminal: string; terminal: string } | null
@@ -10,10 +10,16 @@ type CellSelection = {
 }
 
 export function ParsingTable({
+  grammar,
+  table,
+  columns,
   highlight = null,
   activeNonTerminal = null,
   onSelectCell,
 }: {
+  grammar: Grammar
+  table: ParseTable
+  columns: string[]
   highlight?: Highlight
   activeNonTerminal?: string | null
   onSelectCell?: (cell: CellSelection) => void
@@ -28,7 +34,7 @@ export function ParsingTable({
             <th className="border border-primary/30 px-3 py-2 text-left font-semibold">
               <span className="sr-only">Não-terminal</span>
             </th>
-            {COLUMNS.map((c) => (
+            {columns.map((c) => (
               <th key={c} className="border border-primary/30 px-3 py-2 font-mono font-semibold">
                 {c}
               </th>
@@ -41,8 +47,8 @@ export function ParsingTable({
               <th className="border bg-secondary px-3 py-2 text-center font-mono font-bold text-primary">
                 {nt}
               </th>
-              {COLUMNS.map((c) => {
-                const prod = TABLE[nt][c]
+              {columns.map((c) => {
+                const prod = table[nt]?.[c]
                 const isActive = highlight && highlight.nonTerminal === nt && highlight.terminal === c
                 const canSelect = interactive && activeNonTerminal === nt && Boolean(prod)
                 return (

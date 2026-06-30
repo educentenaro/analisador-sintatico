@@ -158,6 +158,8 @@ export function generateSentence(g: Grammar = defaultGrammar, maxLength = 14): s
       if (form.length > maxLength) {
         const shortest = [...prods].sort((p1, p2) => p1.length - p2.length)
         prod = shortest[0]
+      } else if (nt === g.start && prods.length > 1) {
+        prod = prods[prods.length - 1]
       } else {
         prod = prods[Math.floor(Math.random() * prods.length)]
       }
@@ -172,7 +174,7 @@ export function generateSentence(g: Grammar = defaultGrammar, maxLength = 14): s
     }
   }
 
-  return g.terminals[0] ?? "" // fallback seguro
+  return g.start === "S" ? "aa" : g.terminals[0] ?? "" // fallback seguro
 }
 
 // ----------------------------------------------------------------------------

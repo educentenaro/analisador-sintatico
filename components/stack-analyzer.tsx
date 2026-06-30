@@ -16,7 +16,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
-import { grammar } from "@/lib/grammar"
+import { type Grammar, type ParseTable } from "@/lib/grammar"
 import {
   applyProduction,
   formToSentence,
@@ -26,9 +26,6 @@ import {
   type ParseStep,
 } from "@/lib/parser"
 import { ParsingTable } from "@/components/parsing-table"
-import { TABLE } from "@/lib/grammar"
-
-const EXAMPLES = ["id", "cid", "idvid", "cideid", "idveid", "cidvid"]
 
 function rowClasses(step: ParseStep, isCurrent: boolean) {
   return cn(
@@ -43,20 +40,37 @@ function rowClasses(step: ParseStep, isCurrent: boolean) {
 export function StackAnalyzer({
   sentence,
   onSentenceChange,
+  grammar,
+  table,
+  columns,
 }: {
   sentence: string
   onSentenceChange: (value: string) => void
+  grammar: Grammar
+  table: ParseTable
+  columns: string[]
 }) {
   const [shown, setShown] = useState(0)
   const [manualOpen, setManualOpen] = useState(false)
   const [manualForm, setManualForm] = useState<string[]>([grammar.start])
+  const examples = useMemo(() => {
+    const first = generateSentence(grammar)
+    const second = generateSentence(grammar)
 
-  const { steps, accepted } = useMemo(() => parse(sentence), [sentence])
+    return first === second ? [first] : [first, second]
+  }, [grammar])
+
+  const { steps, accepted } = useMemo(() => parse(sentence, grammar, table), [sentence, grammar, table])
 
   // Reinicia o traço sempre que a sentença mudar (inclusive vinda de fora)
   useEffect(() => {
     setShown(0)
   }, [sentence])
+
+  useEffect(() => {
+    setShown(0)
+    setManualForm([grammar.start])
+  }, [grammar])
 
   const handleChange = (value: string) => {
     onSentenceChange(value)
@@ -64,7 +78,7 @@ export function StackAnalyzer({
   }
 
   const handleGenerate = () => {
-    handleChange(generateSentence())
+    handleChange(generateSentence(grammar))
   }
 
   const openManualGeneration = () => {
@@ -83,7 +97,7 @@ export function StackAnalyzer({
     const activeIndex = leftmostNonTerminalIndex(grammar, manualForm)
     if (activeIndex === -1 || manualForm[activeIndex] !== nonTerminal) return
 
-    const production = TABLE[nonTerminal][terminal]
+    const production = table[nonTerminal]?.[terminal]
     if (!production) return
 
     setManualForm((currentForm) => {
@@ -101,11 +115,11 @@ export function StackAnalyzer({
   const manualRowOptions = useMemo(() => {
     if (!manualCurrent) return []
 
-    return Object.entries(TABLE[manualCurrent]).filter(([, production]) => Boolean(production)) as Array<[
+    return Object.entries(table[manualCurrent] ?? {}).filter(([, production]) => Boolean(production)) as Array<[
       string,
       string[],
     ]>
-  }, [manualCurrent])
+  }, [manualCurrent, table])
 
   const finalizeManualSentence = () => {
     if (!manualCanFinalize) return
@@ -138,7 +152,7 @@ export function StackAnalyzer({
               <input
                 value={sentence}
                 onChange={(e) => handleChange(e.target.value)}
-                placeholder="Ex.: cid"
+                placeholder="Ex.: aa"
                 spellCheck={false}
                 aria-label="Sentença de entrada"
                 className="w-full rounded-lg border bg-background px-3 py-2 font-mono text-sm shadow-sm focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
@@ -158,7 +172,7 @@ export function StackAnalyzer({
             <div className="space-y-2">
               <p className="text-xs font-medium text-muted-foreground">Exemplos rápidos</p>
               <div className="flex flex-wrap gap-2">
-                {EXAMPLES.map((ex) => (
+                {examples.map((ex) => (
                   <button
                     key={ex}
                     onClick={() => handleChange(ex)}
@@ -281,6 +295,9 @@ export function StackAnalyzer({
           </CardHeader>
           <CardContent>
             <ParsingTable
+              grammar={grammar}
+              table={table}
+              columns={columns}
               highlight={highlight}
               activeNonTerminal={manualOpen ? manualCurrent : null}
               onSelectCell={manualOpen ? handleManualCellSelect : undefined}
@@ -403,6 +420,9 @@ export function StackAnalyzer({
 
                 <div className="max-h-[420px] overflow-y-auto rounded-lg border bg-background">
                   <ParsingTable
+                    grammar={grammar}
+                    table={table}
+                    columns={columns}
                     highlight={highlight}
                     activeNonTerminal={manualCurrent}
                     onSelectCell={handleManualCellSelect}

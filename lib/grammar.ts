@@ -1,13 +1,13 @@
 // ============================================================================
-// Motor de Análise Sintática LL(1)
+// Motor de Análise Sintática com Tabela
 // ----------------------------------------------------------------------------
-// Gramática LL(1):
+// Gramática de referência:
 //
-//   E  -> T E'
-//   E' -> v T E' | ε
-//   T  -> F T'
-//   T' -> e F T' | ε
-//   F  -> c F | id
+//   S -> bAb | aBa
+//   A -> bBb | aAc
+//   B -> cCa | ε
+//   C -> aDb
+//   D -> bSc
 //
 // ============================================================================
 
@@ -22,16 +22,37 @@ export type Grammar = {
   productions: Record<string, string[][]>
 }
 
+export type GrammarAnalysis = {
+  first: SymbolSet
+  follow: SymbolSet
+  table: ParseTable
+  columns: string[]
+}
+
+export function cloneGrammar(g: Grammar): Grammar {
+  return {
+    start: g.start,
+    nonTerminals: [...g.nonTerminals],
+    terminals: [...g.terminals],
+    productions: Object.fromEntries(
+      Object.entries(g.productions).map(([nt, prods]) => [
+        nt,
+        prods.map((prod) => [...prod]),
+      ]),
+    ),
+  }
+}
+
 export const grammar: Grammar = {
-  start: "E",
-  nonTerminals: ["E", "E'", "T", "T'", "F"],
-  terminals: ["id", "v", "e", "c"],
+  start: "S",
+  nonTerminals: ["S", "A", "B", "C", "D"],
+  terminals: ["a", "b", "c"],
   productions: {
-    E: [["T", "E'"]],
-    "E'": [["v", "T", "E'"], []],
-    T: [["F", "T'"]],
-    "T'": [["e", "F", "T'"], []],
-    F: [["c", "F"], ["id"]],
+    S: [["a", "A", "a"], ["b", "B", "a"]],
+    A: [["b", "B", "b"], ["a", "C", "a"]],
+    B: [["c", "C", "c"], []],
+    C: [["b", "D", "a"], ["a"]],
+    D: [["c", "S", "b"]],
   },
 }
 
@@ -196,4 +217,13 @@ export function setToString(set: Set<string>) {
   const arr = [...set].filter((s) => s !== EPSILON)
   if (set.has(EPSILON)) arr.push(EPSILON)
   return `{ ${arr.join(", ")} }`
+}
+
+export function buildGrammarAnalysis(g: Grammar): GrammarAnalysis {
+  const first = computeFirst(g)
+  const follow = computeFollow(g, first)
+  const table = buildParseTable(g, first, follow)
+  const columns = [...g.terminals, EOF]
+
+  return { first, follow, table, columns }
 }
